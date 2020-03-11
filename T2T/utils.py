@@ -198,7 +198,7 @@ def modify_com_scripts(path, bin_factor, pixel_spacing, exclude_angles=[]):
     modify_tilt(join(path, 'tilt.com'), bin_factor, exclude_angles);
 
 
-def reconstruct_tomo(path, name, outname = 'half-tomo', SIRT=False):
+def reconstruct_tomo(path, name, outname = 'half-tomo', eraseGold=False, SIRT=False):
     """
     Reconstruct a tomogram with IMOD-com scripts. This also applies mtffilter after ctfcorrection.
 
@@ -208,29 +208,37 @@ def reconstruct_tomo(path, name, outname = 'half-tomo', SIRT=False):
     ----------
     path : str
         Path to the reconstruction-directory.
-    name : str
-        Name of the tomogram (the prefix).
-    dfix : float
-        dfixed parameter of mtffilter: Fixed dose for each image of the input file, in electrons/square Angstrom
-    init : float
-        initial parameter of mtffilter: Dose applied before any of the images in the input file were taken
-    volt : int
-        volt parameter of mtffilter. Microscope voltage in kV; must be either 200 or 300. Default: ``300``
-    rotate_X : bool
-        If the reconstructed tomogram should be rotated 90 degree about X. Default: ``True``
+    outname : str
+        Name of the output tomogram.
+    eraseGold : bool
+        Whether or not to remove gold fiducials from the aligned stack prior to reconstruction.
+    SIRT : bool
+        Use SIRT for tomogram reconstruction.
+
     """
     with cd(path):
         with open(name + "_reconstruction.log", "a") as log:
-
+            
+            # make aligned stack
+            print('making aligned stack...')
             cmd = ['submfg', 'newst.com']
             print(" ".join(cmd))
             result = subprocess.run(cmd, stdout=log, stderr=log)
             result.check_returncode()
-
-#             cmd = ['submfg', 'ctfcorrection.com']
-#             print(" ".join(cmd))
-#             result = subprocess.run(cmd, stdout=log, stderr=log)
-#             result.check_returncode()
+            
+            # remove gold 
+            if eraseGold:
+                print('removing gold fiducials from aligned stack...')                
+                # run the gold eraser process, creates a gold-free aligned stack called '{name}_erase.ali'
+                cmd = ['submfg', 'golderaser.com']
+                print(" ".join(cmd))
+                result = subprocess.run(cmd, stdout=log, stderr=log)
+                result.check_returncode()
+                
+                mv(name + '.ali', name + '_with_gold.ali') # rename the old aligned stack
+                mv(name + '_erase.ali', name + '.ali') # we just change the name back for clarity.
+                
+                os.remove(name + '_with_gold.ali') # removed old aligned stack to save drive space
 
 
             if SIRT:

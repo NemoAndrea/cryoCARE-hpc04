@@ -21,13 +21,32 @@ def augment(x, y):
 
     return X, Y
 
+# for 2D we need to skip the reshape step
+def augment2D(x, y):
+    rot_k = np.random.randint(0, 4, x.shape[0])
+
+    X = x.copy()
+    Y = y.copy()
+
+    for i in range(X.shape[0]):
+        if np.random.rand() < 0.5:
+            X[i] = np.rot90(x[i], k=rot_k[i])
+            Y[i] = np.rot90(y[i], k=rot_k[i])
+        else:
+            X[i] = np.rot90(y[i], k=rot_k[i])
+            Y[i] = np.rot90(x[i], k=rot_k[i])
+
+    return X, Y
+
+
 
 class CryoDataWrapper(Sequence):
 
-    def __init__(self, X, Y, batch_size):
+    def __init__(self, X, Y, batch_size, data_dim):
         self.X, self.Y = X, Y
         self.batch_size = batch_size
         self.perm = np.random.permutation(len(self.X))
+        self.data_dim = data_dim
 
     def __len__(self):
         return int(np.ceil(len(self.X) / float(self.batch_size)))
@@ -42,7 +61,10 @@ class CryoDataWrapper(Sequence):
         return self.__augment__(self.X[idx], self.Y[idx])
 
     def __augment__(self, x, y):
-        return augment(x, y)
+        if (self.data_dim == 2):
+            return augment2D(x, y)
+        else:
+            return augment(x, y)
     
     
 class CryoCARE(CARE):
@@ -68,6 +90,7 @@ class CryoCARE(CARE):
         """
         
         if numGPU > 1: # if more than 1 gpu is requested, use multimodel
+            print('Using multiple GPUs for training')
             self.keras_model = multi_gpu_model(self.keras_model, gpus = numGPU, cpu_merge=True, cpu_relocation=False)
 
         ((isinstance(validation_data, (list, tuple)) and len(validation_data) == 2)
@@ -82,6 +105,7 @@ class CryoCARE(CARE):
         
         axes = axes_check_and_normalize('S' + self.config.axes, X.ndim)
         ax = axes_dict(axes)
+        
 
         for a, div_by in zip(axes, self._axes_div_by(axes)):
             n = X.shape[ax[a]]
@@ -99,7 +123,7 @@ class CryoCARE(CARE):
         if not self._model_prepared:
             self.prepare_for_training()
 
-        training_data = CryoDataWrapper(X, Y, self.config.train_batch_size)
+        training_data = CryoDataWrapper(X, Y, self.config.train_batch_size, self.config.n_dim)
 
         history = self.keras_model.fit_generator(generator=training_data, validation_data=validation_data,
                                                  epochs=epochs, steps_per_epoch=steps_per_epoch,

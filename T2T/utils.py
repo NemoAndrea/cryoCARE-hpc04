@@ -198,7 +198,7 @@ def modify_com_scripts(path, bin_factor, pixel_spacing, exclude_angles=[]):
     modify_tilt(join(path, 'tilt.com'), bin_factor, exclude_angles);
 
 
-def reconstruct_tomo(path, name, outname = 'half-tomo', eraseGold=False, SIRT=False):
+def reconstruct_tomo(path, name, outname = 'half-tomo', eraseGold=False, SIRT=False, correctCTF = False):
     """
     Reconstruct a tomogram with IMOD-com scripts. This also applies mtffilter after ctfcorrection.
 
@@ -225,6 +225,17 @@ def reconstruct_tomo(path, name, outname = 'half-tomo', eraseGold=False, SIRT=Fa
             print(" ".join(cmd))
             result = subprocess.run(cmd, stdout=log, stderr=log)
             result.check_returncode()
+            
+            #  correct CTF (currently only simple correction is supported)
+            if correctCTF:
+                print('correcting CTF in aligned stack (simple correction)...') 
+                cmd = ['submfg', 'ctfcorrection.com']
+                print(" ".join(cmd))
+                result = subprocess.run(cmd, stdout=log, stderr=log)
+                result.check_returncode()
+                
+                mv(name + '.ali', name + '_no_ctfcorr.ali') # rename the old aligned stack
+                mv(name + '_ctfcorr.ali', name + '.ali') # we just change the name back for clarity.
             
             # remove gold 
             if eraseGold:

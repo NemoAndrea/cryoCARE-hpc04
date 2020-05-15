@@ -211,7 +211,7 @@ def extract_samples(even, odd, train_coords, val_coords, mean, std):
     else:
         print('The dimensionality of training coordinates is not supported.')
 
-def extract_volumes_3D(even, odd, train_coords, val_coords, mean, std):
+def extract_volumes(even, odd, train_coords, val_coords, mean, std):
     """
     Extract train and validation volumes and normalize them.
     

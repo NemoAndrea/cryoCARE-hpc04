@@ -424,7 +424,7 @@ def extract_slices(even, odd, train_coords, val_coords, mean, std):
     return X, Y, X_val, Y_val
 
 
-def plotTrainData(X, Y, X_val, Y_val, net_dim):
+def plot_train_data(X, Y, X_val, Y_val, net_dim):
     train_index = np.random.randint(X.shape[0])
     val_index = np.random.randint(X_val.shape[0])
     if net_dim == '3D':

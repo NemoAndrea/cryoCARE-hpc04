@@ -239,7 +239,9 @@ def reconstruct_tomo(path, name, outname = 'half-tomo', eraseGold=False, SIRT=Fa
             
             # remove gold 
             if eraseGold:
-                print('removing gold fiducials from aligned stack...')                
+                print('removing gold fiducials from aligned stack...')    
+                # Modify (only if needed) the golderaser.com file to be compatible with older imod version on hpc04.
+                make_legacy_golderaser('golderaser.com')
                 # run the gold eraser process, creates a gold-free aligned stack called '{name}_erase.ali'
                 cmd = ['submfg', 'golderaser.com']
                 print(" ".join(cmd))
@@ -310,5 +312,36 @@ def reconstruct_tomo(path, name, outname = 'half-tomo', eraseGold=False, SIRT=Fa
                 mv(name + '.rec', outname + '.rec')
                 #os.remove(name + '.ali')        
 
+                
+# Modify golderaser.com and modify if line is found that is not compatible with older IMOD. 
+# We first read all lines, make a copy and modify if not compatible with legacy, and then overwrite the file with these newlines
+def make_legacy_golderaser(filename):
+    is_legacy= True  # initialise to true, set to false later if the file is of newer type
+    newlines= []  # store the file contents for writing later
+    
+    with open(filename) as config:
+         for line in config:
+                if line.find('SkipTurnedOffPoints') != -1:  # str.find() returns -1 if no match is found, else a pos integer
+                    is_legacy = False  # we have found a line that is part of the newer format, so we are no longer dealing with legacy file
+                    if line[0] != '#':  # just make sure it is not commented already. Means no double commenting action.
+                        newlines.append('# ' + str(line).rstrip() + ' # This line was commented as part of the '
+                                        'cryoCARE-hpc04 scripts\n') 
+                    else: 
+                        newlines.append(line)
+                else:  # line is not problematic
+                    newlines.append(line)
+                    
+    if is_legacy:
+        # The golderaser.com file was of the legacy variety; no changes needed to be made..
+        print('No changes made to golderaser.com')
+    else:
+        # we will comment out the incompatible line, and add a quick text comment to remind we have made a change
+        with open(filename,'w') as config:
+            for line in newlines:
+                config.write(line)
+        print('The golderaser.com file is in newer IMOD format; The incompatible line has been commented.')
+    
+                         
+  
 
 

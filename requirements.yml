@@ -1,0 +1,13 @@
+name: cryoCARE-hpc04
+channels:
+  - defaults
+dependencies:
+  - pip=20.0.2
+  - python=3.6.10
+  - tensorflow-gpu=1.15 
+  - pip:
+    - mrcfile
+    - csbdeep
+    - notebook
+
+

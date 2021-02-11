@@ -229,6 +229,8 @@ def reconstruct_tomo(path, name, outname = 'half-tomo', eraseGold=False, SIRT=Fa
             #  correct CTF (currently only simple correction is supported)
             if correctCTF:
                 print('correcting CTF in aligned stack (simple correction)...') 
+                # Modify (only if needed) the ctfcorrection.com file to be compatible with older imod version on hpc04.
+                make_legacy_ctfcorrection('ctfcorrection.com')
                 cmd = ['submfg', 'ctfcorrection.com']
                 print(" ".join(cmd))
                 result = subprocess.run(cmd, stdout=log, stderr=log)
@@ -341,7 +343,32 @@ def make_legacy_golderaser(filename):
                 config.write(line)
         print('The golderaser.com file is in newer IMOD format; The incompatible line has been commented.')
     
-                         
+    
+def make_legacy_ctfcorrection(filename):
+    is_legacy= True  # initialise to true, set to false later if the file is of newer type
+    newlines= []  # store the file contents for writing later
+    
+    with open(filename) as config:
+         for line in config:
+                if line.find('ActionIfGPUFails') != -1:  # str.find() returns -1 if no match is found, else a pos integer
+                    is_legacy = False  # we have found a line that is part of the newer format, so we are no longer dealing with legacy file
+                    if line[0] != '#':  # just make sure it is not commented already. Means no double commenting action.
+                        newlines.append('# ' + str(line).rstrip() + ' # This line was commented as part of the '
+                                        'cryoCARE-hpc04 scripts\n') 
+                    else: 
+                        newlines.append(line)
+                else:  # line is not problematic
+                    newlines.append(line)
+                    
+    if is_legacy:
+        # The golderaser.com file was of the legacy variety; no changes needed to be made..
+        print('No changes made to ctfcorrection.com')
+    else:
+        # we will comment out the incompatible line, and add a quick text comment to remind we have made a change
+        with open(filename,'w') as config:
+            for line in newlines:
+                config.write(line)
+        print('The ctfcorrection.com file is in newer IMOD format; The incompatible line has been commented.')                         
   
 
 
